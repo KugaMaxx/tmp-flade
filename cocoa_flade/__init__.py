@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -5,9 +6,26 @@ import xml.etree.ElementTree as ET
 class FlaDE(object):
     def __init__(self, path) -> None:
         # dataset path
+        self.name = 'FlaDE'
         self.path = Path(path)
-        self.root = ET.parse(self.path / 'annotations.xml').getroot()
+        if not self.path.exists():
+            self.path.mkdir(parents=True)
+    
+        # download
+        if not (self.path / 'assets').exists():
+            print("Downloading datasets...")
+        #     os.system(f'wget -O {self.name}.zip -P {self.path} '
+        #               'TODO: add link')
+        #     os.system(f'unzip -q {self.path / self.name}.zip -d {self.path}')
+            # os.system(f'rm {self.name}.zip')
         
+        # process
+        if not (self.path / 'samples').exists():
+            print("This is first import, may take some time...")
+            os.system(f'python3 {self.path / "scripts" / "build.py"}')
+
+        # parse annotations
+        self.root = ET.parse(self.path / 'annotations.xml').getroot()
         self.cats = list()
         self.tags = list()
 
@@ -91,4 +109,4 @@ class FlaDE(object):
 
 
 if __name__ == '__main__':
-    flade = FlaDE('/data/Ding/FlaDE')
+    flade = FlaDE('/home/szd/workspace/tmp-flade/data')
