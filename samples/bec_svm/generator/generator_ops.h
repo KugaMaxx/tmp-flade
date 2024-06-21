@@ -26,18 +26,20 @@ public:
         candidate_num_(candidate_num),
         threshold_(threshold) {}
 
-  std::vector<py::array_t<int32_t>> detect(const py::array_t<int64_t> &array) {
-    // convert to binary image
-    cv::Mat image = cv::Mat::zeros(width_, height_, CV_8UC1);
+  std::vector<std::vector<float_t>> detect(const py::array_t<int64_t> &array) {
+    // project
+    cv::Mat cnt_image = cv::Mat::zeros(width_, height_, CV_32F);
+    cv::Mat bin_image = cv::Mat::zeros(width_, height_, CV_8UC1);
     for (size_t i = 0; i < array.request().shape[0]; i++) {
-      image.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
+      cnt_image.at<uint8_t>(array.at(i, 1), array.at(i, 2)) += 1;
+      bin_image.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
     }
 
     // find possible regions
-    RegionSet region_set = findContoursRect(image);
+    RegionSet region_set = findContoursRect(bin_image);
 
     // selective search
-    std::vector<py::array_t<int32_t>> results = selectiveBoundingBox(region_set);
+    std::vector<std::vector<float_t>> results = selectiveBoundingBox(region_set);
 
     return results;
   }
@@ -93,11 +95,11 @@ private:
     }
   };
 
-  RegionSet findContoursRect(cv::Mat image) {
+  RegionSet findContoursRect(cv::Mat bin_image) {
     // find contours
     std::vector<cv::Vec4i> hierarchy;
     std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(image, contours, hierarchy, cv::RETR_TREE,
+    cv::findContours(bin_image, contours, hierarchy, cv::RETR_TREE,
                      cv::CHAIN_APPROX_SIMPLE);
 
     // construct set of rectangle
@@ -122,7 +124,7 @@ private:
     return region_set;
   }
 
-  std::vector<py::array_t<int32_t>> selectiveBoundingBox(RegionSet &region_set) {
+  std::vector<std::vector<float_t>> selectiveBoundingBox(RegionSet &region_set) {
     // group rectangles by calculate similarity
     for (size_t i = 0; i < region_set.size(); i++) {
       for (size_t j = i + 1; j < region_set.size(); j++) {
@@ -156,11 +158,16 @@ private:
               });
 
     // convert to lists of coordinates
-    std::vector<py::array_t<int32_t>> result;
+    std::vector<std::vector<float_t>> result;
     for (size_t i = 0; i < rankedRect.size() && i < candidate_num_; i++) {
         auto rect = rankedRect[i].second;
-        std::vector<int32_t> vect = {rect.y, rect.x, rect.height, rect.width};
-        result.push_back(py::cast(vect));
+        std::vector<float_t> vect = {
+          (float) rect.y / width_, 
+          (float) rect.x / height_, 
+          (float) rect.height / width_,
+          (float) rect.width / height_
+        };
+        result.push_back(vect);
     }
 
     return result;

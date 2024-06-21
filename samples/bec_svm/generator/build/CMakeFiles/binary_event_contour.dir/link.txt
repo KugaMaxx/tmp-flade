@@ -1,1 +1,0 @@
-/usr/bin/c++ -fPIC  -Ofast -g -shared  -o ../binary_event_contour.cpython-38-x86_64-linux-gnu.so CMakeFiles/binary_event_contour.dir/binary_event_contour.cpp.o 

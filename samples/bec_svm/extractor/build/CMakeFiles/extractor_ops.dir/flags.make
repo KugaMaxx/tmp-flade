@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = -Dextractor_ops_EXPORTS
 
-CXX_INCLUDES = -I/home/dszh/miniconda3/envs/cocoa/include/python3.8 -isystem /usr/include/opencv4
+CXX_INCLUDES = -I/home/szd/miniconda3/envs/cocoa/include/python3.8 -isystem /usr/include/opencv4
 
 CXX_FLAGS =  -Ofast -g -fPIC -fvisibility=hidden -std=c++2a
 

@@ -24,12 +24,13 @@ class FlaDE(object):
         self.path = Path(file_path)
         self.cats = {cat['name']: cat['id'] for cat in dataset.get_cats(key='name')}
         self.elements = elements[:num_samples]
+        self.dataset = dataset
 
     def __getitem__(self, index):
         # get item path
         element = self.elements[index]
         process = 'denoised' if self.denoised else 'raw'
-        aedat_file = f"assets/{element['scene']}/{process}_clips/{element['frame']}.aedat4"
+        aedat_file = f"samples/{element['scene']}/{process}_clips/{element['frame']}.aedat4"
 
         # load aedat4 data
         reader = kit.io.MonoCameraReader(str(self.path / aedat_file))

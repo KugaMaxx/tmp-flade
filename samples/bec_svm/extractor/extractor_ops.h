@@ -24,13 +24,13 @@ public:
 
   std::vector<float_t> process(
     const py::array_t<int64_t> &array, 
-    const py::array_t<int64_t> &box) {
+    const py::array_t<float_t> &box) {
     
     // obtain box range
-    int64_t tl_x = box.at(0);
-    int64_t tl_y = box.at(1);
-    int64_t dr_x = box.at(0) + box.at(2);
-    int64_t dr_y = box.at(1) + box.at(3);
+    int64_t tl_x = box.at(0) * width_;
+    int64_t tl_y = box.at(1) * height_;
+    int64_t dr_x = (box.at(0) + box.at(2)) * width_;
+    int64_t dr_y = (box.at(1) + box.at(3)) * height_;
     
     // convert to binary image
     const auto array_size = array.request().shape[0];
@@ -54,6 +54,13 @@ public:
         image_2.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
       }
       count++;
+    }
+
+    // check whether image is zero
+    if (cv::countNonZero(image_1) == 0) {
+      image_1 = image_2;
+    } else if (cv::countNonZero(image_2) == 0) {
+      image_2 = image_1;
     }
 
     // combine images

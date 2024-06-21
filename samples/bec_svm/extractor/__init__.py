@@ -10,7 +10,7 @@ class FeatExtractor(extractor_ops.Converter):
         self.resolution = resolution
 
     def process(self, sample, bboxes):
-        if len(bboxes) == 0: 
+        if len(bboxes) == 0:
             return []
 
         feats = []
@@ -19,19 +19,14 @@ class FeatExtractor(extractor_ops.Converter):
 
         return feats
 
-        # X = [self.extract_feats(sample, box) for box in bboxes]
-        # Y = [self.extract_label(sample, box) for box in bboxes]
-        # return X, Y
-
-    def extract_label(self, sample, box):
-        return 1
+        # return [self.extract_feats(sample, box) for box in bboxes]
 
     def extract_feats(self, sample, box):
         # rescale
-        box_x = box[0]
-        box_y = box[1]
-        box_w = box[2]
-        box_h = box[3]
+        box_x = box[0] * self.resolution[0]
+        box_y = box[1] * self.resolution[1]
+        box_w = box[2] * self.resolution[0]
+        box_h = box[3] * self.resolution[1]
 
         # filter
         idn = np.logical_and(
@@ -104,7 +99,5 @@ class FeatExtractor(extractor_ops.Converter):
             abs(buf_areas[-1] - buf_areas[0]) * len(buf_areas) / sum(buf_areas), # 面积变化率
             (buf_movements ** 2).sum() # 质心移动
         ]
-
-        print(feat)
 
         return feat

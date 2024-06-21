@@ -1,4 +1,4 @@
-# Install script for directory: /home/dszh/Workspace/tmp-flade/samples/bec_svm/extractor
+# Install script for directory: /home/szd/workspace/tmp-flade/samples/bec_svm/extractor
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/dszh/Workspace/tmp-flade/samples/bec_svm/extractor/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/home/szd/workspace/tmp-flade/samples/bec_svm/extractor/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
