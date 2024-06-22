@@ -39,7 +39,7 @@ public:
     RegionSet region_set = findContoursRect(bin_image);
 
     // selective search
-    std::vector<std::vector<float_t>> results = selectiveBoundingBox(region_set);
+    std::vector<std::vector<float_t>> results = selectiveBoundingBox(cnt_image, region_set);
 
     return results;
   }
@@ -124,11 +124,11 @@ private:
     return region_set;
   }
 
-  std::vector<std::vector<float_t>> selectiveBoundingBox(RegionSet &region_set) {
+  std::vector<std::vector<float_t>> selectiveBoundingBox(cv::Mat cnt_image, RegionSet &region_set) {
     // group rectangles by calculate similarity
     for (size_t i = 0; i < region_set.size(); i++) {
       for (size_t j = i + 1; j < region_set.size(); j++) {
-        if (calcSimilarity(region_set, i, j) >= threshold_) {
+        if (calcSimilarity(cnt_image, region_set, i, j) >= threshold_) {
           region_set.group(i, j);
         }
       }
@@ -173,13 +173,34 @@ private:
     return result;
   }
 
-  inline float_t calcSimilarity(RegionSet &region_set, int i, int j) {
-    // calculate radius
+  inline float_t calcSimilarity(cv::Mat &cnt_image, RegionSet &region_set, int i, int j) {
+    // box location
     float_t dist = cv::norm(region_set.center[i] - region_set.center[j]);
     float_t sumR = region_set.radius[i] + region_set.radius[j];
-    float_t score = dist < sumR ? 1. : sumR / dist;
+    float_t box_score = dist < sumR ? 1. : sumR / dist;
 
-    return score;
+    // event rate
+    const auto &rect1 = region_set.rect[i];
+    const auto &rect2 = region_set.rect[j];
+
+    auto count_rate = [&cnt_image](const cv::Rect& rect) {
+        float_t count = 0;
+        for (int x = rect.x; x < rect.x + rect.width; ++x) {
+            for (int y = rect.y; y < rect.y + rect.height; ++y) {
+                if (cnt_image.at<uint8_t>(y, x) != 0) {
+                    count++;
+                }
+            }
+        }
+        return count;
+    };
+
+    float_t rate1 = count_rate(rect1) / rect1.area();
+    float_t rate2 = count_rate(rect2) / rect2.area();
+    float_t rate_score = std::fmin(rate1, rate2) / std::fmax(rate1, rate2);
+
+    // results
+    return 0.7 * box_score + 0.3 * rate_score;
   }
 
   size_t height_;

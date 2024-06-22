@@ -4,7 +4,7 @@ from . import generator_ops
 class BinaryEventContour(generator_ops.Detector):
     def __init__(self, 
                  resolution, 
-                 threshold: float = 0.75, 
+                 threshold: float = 0.80, 
                  candidate_num: int = 1, 
                  min_area: int = 5) -> None:
         super().__init__(resolution, 

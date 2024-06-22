@@ -35,12 +35,16 @@ def plot_rescaled_image(bkg_image, factor=2):
 
 
 def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: List = None,
-                          categories=[{'id': i, 'name': f"cat_{i}", 
-                                 'color': "#{:02x}{:02x}{:02x}".format(
-                                     random.randint(0, 255), 
-                                     random.randint(0, 255),
-                                     random.randint(0, 255),
-                                 )} for i in range(100)]):
+                          categories=[{
+                                  'id': i,
+                                  'name': f"cat_{i}",
+                                  'color': "#{:02x}{:02x}{:02x}".format(
+                                      random.randint(0, 255),
+                                      random.randint(0, 255),
+                                      random.randint(0, 255),
+                                  )
+                              } for i in range(100)
+                          ]):
     """
     https://github.com/trsvchn/coco-viewer/blob/main/cocoviewer.py
     """
@@ -59,6 +63,9 @@ def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: 
         for (x, y, w, h) in bboxes
     ]
 
+    # color convert function
+    hex_to_rgb = lambda hex: tuple(int(hex.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+
     # create PIL image
     pil_image = Image.fromarray(bkg_image).convert("RGBA")
     draw = ImageDraw.Draw(pil_image)
@@ -73,12 +80,12 @@ def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: 
         color = categories[label]['color']
 
         # draw rectangle
-        draw.rectangle((tl_x, tl_y, rb_x, rb_y), width=2, outline=color+(200,))
+        draw.rectangle((tl_x, tl_y, rb_x, rb_y), width=2, outline=hex_to_rgb(color)+(200,))
 
         # draw text on the image
         text = f"{name}: {proba:.2f}" if proba is not None else f"{name}"
         text_bbox = draw.textbbox((tl_x, tl_y), text, font=font)
-        draw.rectangle(text_bbox, fill=color+(200,))
+        draw.rectangle(text_bbox, fill=hex_to_rgb(color)+(200,))
         draw.text((tl_x, tl_y), text, fill=(255, 255, 255), font=font)
 
     return np.array(pil_image)

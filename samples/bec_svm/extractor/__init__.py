@@ -17,8 +17,10 @@ class FeatExtractor(extractor_ops.Converter):
         for box in bboxes:  
             feats.append(super().process(sample['events'], box))
 
-        return feats
+        # print(feats)
+        # print([self.extract_feats(sample, box) for box in bboxes])
 
+        return feats
         # return [self.extract_feats(sample, box) for box in bboxes]
 
     def extract_feats(self, sample, box):
@@ -49,13 +51,8 @@ class FeatExtractor(extractor_ops.Converter):
 
         def moment(contour):
             M = cv2.moments(contour)
-            if M["m00"] != 0:
-                cX = int(M["m10"] / M["m00"])
-                cY = int(M["m01"] / M["m00"])
-            else:
-                cX = 0
-                cY = 0
-
+            cX = int(M["m10"] / (M["m00"] + np.finfo(float).eps))
+            cY = int(M["m01"] / (M["m00"] + np.finfo(float).eps))
             return cX, cY
 
         # project
@@ -67,13 +64,12 @@ class FeatExtractor(extractor_ops.Converter):
         arc_length = cv2.arcLength(contour, True) + 1
 
         # corners
-        harris = cv2.cornerHarris(count, blockSize=2, ksize=3, k=0.04)
+        # harris = cv2.cornerHarris(count, blockSize=2, ksize=3, k=0.04)
+        max_corners = 20
+        corners = cv2.goodFeaturesToTrack(count, maxCorners=max_corners, qualityLevel=0.01, minDistance=10)
 
         # wrap events into buffers
-        buffer = np.split(
-            events,
-            np.searchsorted(events[:, 0] - events[0, 0], [11000, 22000])
-        )
+        buffer = np.split(events, [int(len(events) / 2)])
         buffer = [buf for buf in buffer if len(buf) != 0]
         buf_contours = [
             mcontour(project(buffer)) for buffer in buffer
@@ -88,16 +84,19 @@ class FeatExtractor(extractor_ops.Converter):
         buf_moments = np.array([
             moment(buf_countour) for buf_countour in buf_contours
         ])
-        buf_movements = np.gradient(buf_moments, axis=0) if len(buf_moments) > 1 else np.array([[0, 0]])
+        buf_movements = np.array([
+            buf_moments[i] - buf_moments[i - 1] for i in range(1, len(buf_moments))
+        ]) if len(buf_moments) > 1 else np.array([[0, 0]])
 
         feat = [
-            len(events),  # 事件输出率
+            len(events) / (box_w * box_h),  # 事件输出率
             box_w / box_h,          # 长宽比
             area / (box_w * box_h), # 矩形度
             4 * math.pi * area / arc_length ** 2, # 圆形度
-            (harris != 0).sum(), # 角点
             abs(buf_areas[-1] - buf_areas[0]) * len(buf_areas) / sum(buf_areas), # 面积变化率
-            (buf_movements ** 2).sum() # 质心移动
+            np.linalg.norm(buf_movements, axis=1).sum(), # 质心移动
+            len(corners) / max_corners, # features 角点
+            # (harris != 0).sum(), # harris 角点
         ]
 
         return feat

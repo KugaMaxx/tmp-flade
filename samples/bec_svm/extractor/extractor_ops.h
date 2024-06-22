@@ -22,15 +22,17 @@ public:
       : height_(resolution.height), 
         width_(resolution.width) {}
 
-  std::vector<float_t> process(
+  std::vector<double> process(
     const py::array_t<int64_t> &array, 
-    const py::array_t<float_t> &box) {
+    const py::array_t<double> &box) {
     
     // obtain box range
     int64_t tl_x = box.at(0) * width_;
     int64_t tl_y = box.at(1) * height_;
     int64_t dr_x = (box.at(0) + box.at(2)) * width_;
     int64_t dr_y = (box.at(1) + box.at(3)) * height_;
+    double box_w = box.at(2) * width_;
+    double box_h = box.at(3) * height_;
     
     // convert to binary image
     const auto array_size = array.request().shape[0];
@@ -44,14 +46,14 @@ public:
       int64_t y = array.at(i, 2);
 
       // whether out of range
-      if (x < tl_x || x > dr_x && y < tl_y || y > dr_y) {
+      if ((x < tl_x || x > dr_x) || (y < tl_y || y > dr_y)) {
         continue;
       }
 
       if (i <= array_size / 2) {
-        image_1.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
+        image_1.at<uint8_t>(x, y) = 255;
       } else {
-        image_2.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
+        image_2.at<uint8_t>(x, y) = 255;
       }
       count++;
     }
@@ -72,27 +74,32 @@ public:
     const double arc_length = cv::arcLength(contour, true) + 1;
 
     // corners
+    const double max_corners = 20;
     std::vector<cv::Point2f> corners;
-    cv::goodFeaturesToTrack(image, corners, 100, 0.01, 10);
+    cv::goodFeaturesToTrack(image, corners, max_corners, 0.01, 10);
 
     // backward
     const std::vector<cv::Point> contour_1 = findMainContour(image_1);
-    const double area_1 = cv::contourArea(contour_1);
+    const double area_1 = cv::contourArea(contour_1) + 1;
     cv::Moments M_1 = cv::moments(contour_1);
-    cv::Point centroid_1(M_1.m10 / M_1.m00, M_1.m01 / M_1.m00);
+    cv::Point centroid_1(M_1.m10 / (M_1.m00 + std::numeric_limits<double>::epsilon()), 
+                         M_1.m01 / (M_1.m00 + std::numeric_limits<double>::epsilon()));
 
     // forward
     const std::vector<cv::Point> contour_2 = findMainContour(image_2);
-    const double area_2 = cv::contourArea(contour_2);
+    const double area_2 = cv::contourArea(contour_2) + 1;
     cv::Moments M_2 = cv::moments(contour_2);
-    cv::Point centroid_2(M_2.m10 / M_2.m00, M_2.m01 / M_2.m00);
+    cv::Point centroid_2(M_1.m10 / (M_1.m00 + std::numeric_limits<double>::epsilon()), 
+                         M_1.m01 / (M_1.m00 + std::numeric_limits<double>::epsilon()));
 
-    std::vector<float_t> results{
-      (float_t) (count),
-      (float_t) ((float_t) box.at(2) / (float_t) box.at(3)),
-      (float_t) (contour_area / (box.at(2) * box.at(3))),
-      (float_t) (4 * M_PI * contour_area / (arc_length * arc_length)),
-      (float_t) (corners.size()),
+    std::vector<double> results{
+      (double) (count) / (box_w * box_h),
+      (double) (box_w / box_h),
+      (double) (contour_area / (box_w * box_h)),
+      (double) (4 * M_PI * contour_area / (arc_length * arc_length)),
+      (double) std::fabs(area_1 - area_2) * 2 / (area_1 + area_2),
+      (double) cv::norm(centroid_1 - centroid_2),
+      (double) (corners.size() / max_corners),
     };
 
     return results;

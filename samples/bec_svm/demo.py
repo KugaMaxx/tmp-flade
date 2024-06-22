@@ -15,6 +15,7 @@ from torchvision.ops.boxes import _box_xywh_to_xyxy
 data_path = '/home/szd/workspace/tmp-flade/data/FlaDE'
 
 # training
+print("Training...")
 X_train, Y_train = [], []
 data_loader = FlaDE(data_path, 'train', shuffle=True, num_samples=600)
 for i, (sample, target) in enumerate(data_loader):
@@ -47,16 +48,12 @@ for i, (sample, target) in enumerate(data_loader):
             X_train.append(feat)
             Y_train.append(target['labels'][ind] + 1)
 
-#     # if sample['frames'] is None: continue
-#     # image = plot_projected_events(sample['frames'], sample['events'])
-#     # image = plot_detection_result(image, bboxes=bboxes)
-#     # cv2.imwrite(f'./detects/detect_{i}.png', image)
-
-print("Training...")
 svm = SVC(C=1.0, kernel='rbf', gamma='auto')
 svm.fit(X_train, Y_train)
 
 # validation
+print("Validation...")
+tp, fp, tn, fn = 0, 0, 0, 0
 data_loader = FlaDE(data_path, 'test', shuffle=True)
 metirc = Metric(cats=data_loader.dataset.get_cats(key='name', query=['Flame']), 
                 tags=data_loader.dataset.get_tags())
@@ -80,7 +77,28 @@ for i, (sample, target) in enumerate(data_loader):
         output['labels'] = [c - 1 for c in svm.predict(output['feats'])]
         output['scores'] = [1. for _ in range(len(output['labels']))]
 
+    if 0 in output['labels']: 
+        if 0 not in target['labels']:
+            fp = fp + 1
+            # import cv2
+            # if sample['frames'] is None: continue
+            # image = plot_projected_events(sample['frames'], sample['events'])
+            # image = plot_detection_result(image, bboxes=output['bboxes'])
+            # cv2.putText(image, f"{target['name']}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            # cv2.imwrite(f'./detects/detect_{i}.png', image)
+            # print(f"Person: {output['feats']}, {output['labels']}")
+        else:
+            tp = tp + 1
+            # print(f"Flame: {output['feats']}, {output['labels']}")
+    else:
+        if 0 not in target['labels']:
+            tn = tn + 1
+        else:
+            fn = fn + 1
+
     metirc.update([output], [target])
 
 stats = metirc.summarize()
 print('\n'.join(f'{info}: {value:.3f}' for info, value in stats))
+
+print(tp / (tp + fp), tp / (tp + fn))

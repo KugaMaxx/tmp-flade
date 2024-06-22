@@ -34,7 +34,7 @@ class Metric(object):
         # convert to pycoco type
         for output, target in zip(outputs, targets):
             # mapping to image id
-            image_id = self.aet_ids[target['file']]
+            image_id = self.aet_ids[target['name']]
             
             # obtain basic info
             width, height = target['resolution']
@@ -42,8 +42,8 @@ class Metric(object):
             # convert target
             for tgt_cls, tgt_box in zip(target['labels'], target['bboxes']):
                 # parse elements
-                category_id = tgt_cls.item()
-                xtl, ytl, w, h = tgt_box.tolist()
+                category_id = tgt_cls
+                xtl, ytl, w, h = tgt_box
                 
                 # emplace back
                 self._gts[image_id, category_id].append({
@@ -58,9 +58,9 @@ class Metric(object):
             # convert output
             for out_cls, out_prob, out_box in zip(output['labels'], output['scores'], output['bboxes']):
                 # parse elements
-                score = out_prob.item()
-                category_id = out_cls.item()
-                xtl, ytl, w, h = out_box.tolist()
+                score = out_prob
+                category_id = out_cls
+                xtl, ytl, w, h = out_box
 
                 # emplace back
                 self._dts[image_id, category_id].append({
@@ -318,15 +318,15 @@ class Metric(object):
         stats.append(_summarize(1))
         stats.append(_summarize(1, iouThr=.50, maxDets=self.max_dets[2]))
         stats.append(_summarize(1, iouThr=.75, maxDets=self.max_dets[2]))
-        stats.append(_summarize(1, areaRng='small', maxDets=self.max_dets[2]))
+        stats.append(_summarize(1, areaRng='small',  maxDets=self.max_dets[2]))
         stats.append(_summarize(1, areaRng='medium', maxDets=self.max_dets[2]))
-        stats.append(_summarize(1, areaRng='large', maxDets=self.max_dets[2]))
+        stats.append(_summarize(1, areaRng='large',  maxDets=self.max_dets[2]))
         stats.append(_summarize(0, maxDets=self.max_dets[0]))
         stats.append(_summarize(0, maxDets=self.max_dets[1]))
         stats.append(_summarize(0, maxDets=self.max_dets[2]))
-        stats.append(_summarize(0, areaRng='small', maxDets=self.max_dets[2]))
+        stats.append(_summarize(0, areaRng='small',  maxDets=self.max_dets[2]))
         stats.append(_summarize(0, areaRng='medium', maxDets=self.max_dets[2]))
-        stats.append(_summarize(0, areaRng='large', maxDets=self.max_dets[2]))
+        stats.append(_summarize(0, areaRng='large',  maxDets=self.max_dets[2]))
 
         return stats
 
