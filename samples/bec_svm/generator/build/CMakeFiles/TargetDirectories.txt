@@ -1,3 +1,0 @@
-/home/szd/workspace/tmp-flade/samples/bec_svm/generator/build/CMakeFiles/generator_ops.dir
-/home/szd/workspace/tmp-flade/samples/bec_svm/generator/build/CMakeFiles/edit_cache.dir
-/home/szd/workspace/tmp-flade/samples/bec_svm/generator/build/CMakeFiles/rebuild_cache.dir

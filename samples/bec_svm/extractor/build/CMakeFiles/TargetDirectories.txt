@@ -1,3 +1,0 @@
-/home/szd/workspace/tmp-flade/samples/bec_svm/extractor/build/CMakeFiles/extractor_ops.dir
-/home/szd/workspace/tmp-flade/samples/bec_svm/extractor/build/CMakeFiles/edit_cache.dir
-/home/szd/workspace/tmp-flade/samples/bec_svm/extractor/build/CMakeFiles/rebuild_cache.dir
