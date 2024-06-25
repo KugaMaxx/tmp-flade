@@ -56,7 +56,7 @@ print("Validation...")
 tp, fp, tn, fn = 0, 0, 0, 0
 data_loader = FlaDE(data_path, 'test', shuffle=True)
 metirc = Metric(cats=data_loader.dataset.get_cats(key='name', query=['Flame']), 
-                tags=data_loader.dataset.get_tags())
+                tags=data_loader.dataset.get_tags(key='name', query=None))
 for i, (sample, target) in enumerate(data_loader):
     # ceate output
     output = dict()
@@ -86,10 +86,8 @@ for i, (sample, target) in enumerate(data_loader):
             # image = plot_detection_result(image, bboxes=output['bboxes'])
             # cv2.putText(image, f"{target['name']}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             # cv2.imwrite(f'./detects/detect_{i}.png', image)
-            # print(f"Person: {output['feats']}, {output['labels']}")
         else:
             tp = tp + 1
-            # print(f"Flame: {output['feats']}, {output['labels']}")
     else:
         if 0 not in target['labels']:
             tn = tn + 1
@@ -100,5 +98,4 @@ for i, (sample, target) in enumerate(data_loader):
 
 stats = metirc.summarize()
 print('\n'.join(f'{info}: {value:.3f}' for info, value in stats))
-
-print(tp / (tp + fp), tp / (tp + fn))
+print(f'Precision: {tp / (tp + fp):.3f}, Recall: {tp / (tp + fn):.3f}')

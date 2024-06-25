@@ -14,14 +14,21 @@ class FlaDE(object):
         # download
         if not (self.path / 'assets').exists():
             print("Downloading datasets...")
-        #     os.system(f'wget -O {self.name}.zip -P {self.path} '
-        #               'TODO: add link')
-        #     os.system(f'unzip -q {self.path / self.name}.zip -d {self.path}')
-            # os.system(f'rm {self.name}.zip')
+            os.system(
+                f'wget -O {self.path / self.name}.zip '
+                '"https://recstore.ustc.edu.cn/file/20240619_8fa78247195237242027ab72db9a53a7'
+                '?Signature=hH0+uZcqFffiVPHUITCb8DV+Xxc=&Expires=1718930564&AccessKeyId=MAKIG23JM2UB98N0KTQH'
+                '&response-content-type=application%2Foctet-stream'
+                '&response-content-disposition=attachment%3Bfilename%3D%22FlaDE.zip%22'
+                '&storage=moss&filename=FlaDE.zip&download=download"'
+            )
+            print("Unziping...")
+            os.system(f'unzip -q {self.path / self.name}.zip -d {self.path}')
+            os.system(f'rm {self.path / self.name}.zip')
         
         # process
         if not (self.path / 'samples').exists():
-            print("This is first import, may take some time...")
+            print("Processing...")
             os.system(f'python3 {self.path / "scripts" / "build.py"}')
 
         # parse annotations
@@ -39,53 +46,31 @@ class FlaDE(object):
             for label in self.root.findall('meta/labels/label')
         ])
         
-        # update aedats
-        self.tags.extend([
-            {
-                # image
-                'id': int(image.get('id')),
-                'name': image.get('name'),
-                'scene': image.get('scene'),
-                'frame': image.get('frame'),
-                # boxes
-                'boxes': [
-                    {
-                        'label': box.get('label'),
-                        'xtl': int(float(box.get('xtl'))),
-                        'ytl': int(float(box.get('ytl'))),
-                        'xbr': int(float(box.get('xbr'))),
-                        'ybr': int(float(box.get('ybr'))),
-                    }
-                    for box in image.findall('box')
-                ],  # 添加逗号
-                # group
-                'partition': 'train'
-            }
-            for image in self.root.findall('samples/train/image')
-        ])  # part of train
-        self.tags.extend([
-            {
-                # image
-                'id': int(image.get('id')),
-                'name': image.get('name'),
-                'scene': image.get('scene'),
-                'frame': image.get('frame'),
-                # boxes
-                'boxes': [
-                    {
-                        'label': box.get('label'),
-                        'xtl': int(float(box.get('xtl'))),
-                        'ytl': int(float(box.get('ytl'))),
-                        'xbr': int(float(box.get('xbr'))),
-                        'ybr': int(float(box.get('ybr'))),
-                    }
-                    for box in image.findall('box')
-                ],  # 添加逗号
-                # group
-                'partition': 'test'
-            }
-            for image in self.root.findall('samples/test/image')
-        ])  # part of test
+        # update annotations
+        for partition in ['train', 'val', 'test']:
+            self.tags.extend([
+                {
+                    # image
+                    'id': int(image.get('id')),
+                    'name': image.get('name'),
+                    'scene': image.get('scene'),
+                    'frame': image.get('frame'),
+                    # boxes
+                    'boxes': [
+                        {
+                            'label': box.get('label'),
+                            'xtl': int(float(box.get('xtl'))),
+                            'ytl': int(float(box.get('ytl'))),
+                            'xbr': int(float(box.get('xbr'))),
+                            'ybr': int(float(box.get('ybr'))),
+                        }
+                        for box in image.findall('box')
+                    ],  # 添加逗号
+                    # group
+                    'partition': f'{partition}'
+                }
+                for image in self.root.findall(f'samples/{partition}/image')
+            ])
 
     def _search(self, elements, key='id', query=None):
         # search all
@@ -109,4 +94,4 @@ class FlaDE(object):
 
 
 if __name__ == '__main__':
-    flade = FlaDE('/home/szd/workspace/tmp-flade/data')
+    flade = FlaDE('/home/szd/workspace/tmp-flade/data/FlaDE')
