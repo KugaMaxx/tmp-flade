@@ -53,7 +53,6 @@ svm.fit(X_train, Y_train)
 
 # validation
 print("Validation...")
-tp, fp, tn, fn = 0, 0, 0, 0
 data_loader = FlaDE(data_path, 'test', shuffle=True)
 metirc = Metric(cats=data_loader.dataset.get_cats(), 
                 tags=data_loader.dataset.get_tags())
@@ -79,24 +78,15 @@ for i, (sample, target) in enumerate(data_loader):
 
     if 0 in output['labels']: 
         if 0 not in target['labels']:
-            fp = fp + 1
+            pass
             # import cv2
             # if sample['frames'] is None: continue
             # image = plot_projected_events(sample['frames'], sample['events'])
             # image = plot_detection_result(image, bboxes=output['bboxes'])
             # cv2.putText(image, f"{target['name']}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
             # cv2.imwrite(f'./detects/detect_{i}.png', image)
-        else:
-            tp = tp + 1
-    else:
-        if 0 not in target['labels']:
-            tn = tn + 1
-        else:
-            fn = fn + 1
 
     metirc.update([output], [target])
 
 stats, brief = metirc.summarize()
 print(brief)
-# print('\n'.join(f'{info}: {value:.3f}' for info, value in stats))
-print(f'Precision: {tp / (tp + fp):.3f}, Recall: {tp / (tp + fn):.3f}')
