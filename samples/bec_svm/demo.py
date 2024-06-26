@@ -55,8 +55,8 @@ svm.fit(X_train, Y_train)
 print("Validation...")
 tp, fp, tn, fn = 0, 0, 0, 0
 data_loader = FlaDE(data_path, 'test', shuffle=True)
-metirc = Metric(cats=data_loader.dataset.get_cats(key='name', query=['Flame']), 
-                tags=data_loader.dataset.get_tags(key='name', query=None))
+metirc = Metric(cats=data_loader.dataset.get_cats(), 
+                tags=data_loader.dataset.get_tags())
 for i, (sample, target) in enumerate(data_loader):
     # ceate output
     output = dict()
@@ -96,6 +96,7 @@ for i, (sample, target) in enumerate(data_loader):
 
     metirc.update([output], [target])
 
-stats = metirc.summarize()
-print('\n'.join(f'{info}: {value:.3f}' for info, value in stats))
+stats, brief = metirc.summarize()
+print(brief)
+# print('\n'.join(f'{info}: {value:.3f}' for info, value in stats))
 print(f'Precision: {tp / (tp + fp):.3f}, Recall: {tp / (tp + fn):.3f}')

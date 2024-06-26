@@ -13,8 +13,12 @@ class Metric(object):
         self.aet_ids = {tag['name']: tag['id'] for tag in tags}
 
         # intrinsic parameters
-        self.max_dets  = [1, 10, 100]
-        self.area_rngs = {
+        self.max_dets = {
+            'single': 1,
+            'dense':  10,
+            'infty':  100,
+        }
+        self.area_rng = {
             'all':    [0 ** 2, 1e5 ** 2],
             'small':  [0 ** 2, 32 ** 2],
             'medium': [32 ** 2, 96 ** 2],
@@ -93,13 +97,13 @@ class Metric(object):
         }
 
         # evaluate
-        maxDet = self.max_dets[-1]
+        maxDet = max([max_det for _, max_det in self.max_dets.items()])
         self._stats = np.asarray([
             self._evaluate_each(aet_id, cat_id, area, maxDet) \
                 for cat_id in self.cat_ids.values()
-                for area   in self.area_rngs.values()
+                for area   in self.area_rng.values()
                 for aet_id in self.aet_ids.values()
-        ]).reshape(len(self.cat_ids), len(self.area_rngs), len(self.aet_ids))
+        ]).reshape(len(self.cat_ids), len(self.area_rng), len(self.aet_ids))
 
     def _evaluate_each(self, imgId, catId, aRng, maxDet):
         '''
@@ -198,16 +202,16 @@ class Metric(object):
         T           = len(self.iou_thr)
         R           = len(self.rec_thr)
         K           = len(self.cat_ids)
-        A           = len(self.area_rngs)
+        A           = len(self.area_rng)
         M           = len(self.max_dets)
         precision   = -np.ones((T, R, K, A, M)) # -1 for the precision of absent categories
-        recall      = -np.ones((T, K, A, M))
+        recall      = -np.ones((T, 1, K, A, M))
         scores      = -np.ones((T, R, K, A, M))
 
         # retrieve E at each category, area range, and max number of detections
         for k, (cat_name, cat_id) in enumerate(self.cat_ids.items()):
-            for a, (area_name, area_range) in enumerate(self.area_rngs.items()):
-                for m, max_det in enumerate(self.max_dets):
+            for a, (area_name, area_range) in enumerate(self.area_rng.items()):
+                for m, (maxDet_name, max_det) in enumerate(self.max_dets.items()):
                     E = [e for e in self._stats[k, a, :] if not e is None]
                     if len(E) == 0:
                         continue
@@ -240,9 +244,9 @@ class Metric(object):
                         ss = np.zeros((R,))
 
                         if nd:
-                            recall[t,k,a,m] = rc[-1]
+                            recall[t,0,k,a,m] = rc[-1]
                         else:
-                            recall[t,k,a,m] = 0
+                            recall[t,0,k,a,m] = 0
 
                         # numpy is slow without cython optimization for accessing elements
                         # use python array gets significant speed improvement
@@ -269,66 +273,106 @@ class Metric(object):
             'scores': scores,
         }
 
+    def _compute(self, pr : str = 'P',
+                 cal_mean : bool = True, 
+                 iou_thr  : int = None, 
+                 cat_name : str = 'all', 
+                 area_rng : str = 'all', 
+                 max_dets : str = 'infty'):
+        """
+        Compute the mean Average Precision and Recall
+        """
+        # index
+        tind = np.arange(len(self.iou_thr)) if iou_thr is None else np.where(iou_thr == self.iou_thr)[0]
+        cind = np.arange(len(self.cat_ids)) if cat_name == 'all' else [self.cat_ids[cat_name]]
+        aind = [i for i, aRng in enumerate(self.area_rng.keys()) if aRng == area_rng]
+        mind = [i for i, mDet in enumerate(self.max_dets.keys()) if mDet == max_dets]
+
+        # select mode
+        if pr == 'P':
+            s = self._eval['precision']
+        elif pr == 'R':
+            s = self._eval['recall']
+        else:
+            raise ValueError("Invalid value for 'pr'. Expected 'P' or 'R'.")
+
+        # slice
+        s = s[tind, :, :, :, :]
+        s = s[:, :, cind, :, :]
+        s = s[:, :, :, aind, :]
+        s = s[:, :, :, :, mind]
+
+        # return value
+        if cal_mean is not True:
+            return s
+        else:
+            return np.mean(s[s > -1]) if len(s[s > -1]) != 0 else -1
+
     def summarize(self):
         '''
         Compute and display summary metrics for evaluation results.
         Note this functin can *only* be applied on the default parameter setting
         '''
-        def _summarize(ap=1, iouThr=None, areaRng='all', maxDets=100):
-            # summarize
-            aind = [i for i, aRng in enumerate(self.area_rngs.keys()) if aRng == areaRng]
-            mind = [i for i, mDet in enumerate(self.max_dets) if mDet == maxDets]
-            if ap == 1:
-                # dimension of precision: [T x R x K x A x M]
-                s = self._eval['precision']
-                # IoU
-                if iouThr is not None:
-                    t = np.where(iouThr == self.iou_thr)[0]
-                    s = s[t]
-                s = s[:,:,:,aind,mind]
-            else:
-                # dimension of recall: [T x K x A x M]
-                s = self._eval['recall']
-                if iouThr is not None:
-                    t = np.where(iouThr == self.iou_thr)[0]
-                    s = s[t]
-                s = s[:,:,aind,mind]
-            if len(s[s>-1])==0:
-                mean_s = -1
-            else:
-                mean_s = np.mean(s[s>-1])
-
-            # format string
-            title = 'Average Precision' if ap == 1 else 'Average Recall'
-            type  = '(AP)' if ap==1 else '(AR)'
-            iou   = f'{self.iou_thr[0]:0.2f}:{self.iou_thr[-1]:0.2f}' if iouThr is None else f'{iouThr:0.2f}'
-            
-            info = f'{title:<18} {type} @ [ IoU = {iou:<9} | area = {areaRng:>6s} | maxDets = {maxDets:>3d} ]'
-
-            return info, mean_s
-
         # evaluate
         self._evaluate()
         
         # accumulate
         self._accumulate()
 
-        # get summaries
-        stats = list()
-        stats.append(_summarize(1))
-        stats.append(_summarize(1, iouThr=.50, maxDets=self.max_dets[2]))
-        stats.append(_summarize(1, iouThr=.75, maxDets=self.max_dets[2]))
-        stats.append(_summarize(1, areaRng='small',  maxDets=self.max_dets[2]))
-        stats.append(_summarize(1, areaRng='medium', maxDets=self.max_dets[2]))
-        stats.append(_summarize(1, areaRng='large',  maxDets=self.max_dets[2]))
-        stats.append(_summarize(0, maxDets=self.max_dets[0]))
-        stats.append(_summarize(0, maxDets=self.max_dets[1]))
-        stats.append(_summarize(0, maxDets=self.max_dets[2]))
-        stats.append(_summarize(0, areaRng='small',  maxDets=self.max_dets[2]))
-        stats.append(_summarize(0, areaRng='medium', maxDets=self.max_dets[2]))
-        stats.append(_summarize(0, areaRng='large',  maxDets=self.max_dets[2]))
+        # smooth function
+        def smooth(y, f=0.05):
+            """
+            Applies box filter smoothing to array `y` with fraction `f`, yielding a smoothed array.
+            """
+            nf = round(len(y) * f * 2) // 2 + 1  # number of filter elements (must be odd)
+            p = np.ones(nf // 2)  # ones padding
+            yp = np.concatenate((p * y[0], y, p * y[-1]), 0)  # y padded
+            return np.convolve(yp, np.ones(nf) / nf, mode="valid")  # y-smoothed
 
-        return stats
+        # create statistics
+        stats = {cat: dict() for cat in [k for k in self.cat_ids.keys()] + ['all']}
+        brief = ("%11s" * 7) % ("Class", "P", "R", "F1", "AP50", "AP50-95", "AR100")
+        for cat_name, cat_info in stats.items():
+            # pre process
+            p = self._compute('P', cat_name=cat_name, iou_thr=.50, cal_mean=False).squeeze()
+            p = p.mean(-1) if p.ndim != 1 else p
+            r = self.rec_thr
+            f1 = 2 * p * r / (p + r + 1e-16)
+            i = smooth(f1, 0.1).argmax()  # max F1 index
+
+            # F1 score
+            cat_info['Precision'] = p[i]
+            cat_info['Recall'] = r[i]
+            cat_info['F1-score'] = f1[i] 
+
+            # average precision
+            cat_info['AP50-95'] = self._compute('P', cat_name=cat_name)
+            cat_info['AP50']    = self._compute('P', cat_name=cat_name, iou_thr=.50)
+            cat_info['AP75']    = self._compute('P', cat_name=cat_name, iou_thr=.75)
+            cat_info['APs']     = self._compute('P', cat_name=cat_name, area_rng='small')
+            cat_info['APm']     = self._compute('P', cat_name=cat_name, area_rng='medium')
+            cat_info['APl']     = self._compute('P', cat_name=cat_name, area_rng='large')
+
+            # average recall
+            cat_info['AR1']   = self._compute('R', cat_name=cat_name, max_dets='single')
+            cat_info['AR10']  = self._compute('R', cat_name=cat_name, max_dets='dense')
+            cat_info['AR100'] = self._compute('R', cat_name=cat_name, max_dets='infty')
+            cat_info['ARs']   = self._compute('R', cat_name=cat_name, area_rng='small')
+            cat_info['ARm']   = self._compute('R', cat_name=cat_name, area_rng='medium')
+            cat_info['ARl']   = self._compute('R', cat_name=cat_name, area_rng='large')
+
+            # append printable brief
+            brief += "\n%11s" % cat_name.capitalize()
+            brief += ("%11.3f" * 6) % (
+                cat_info['Precision'],
+                cat_info['Recall'],
+                cat_info['F1-score'],
+                cat_info['AP50'],
+                cat_info['AP50-95'],
+                cat_info['AR100']
+            )
+
+        return stats, brief
 
 
 if __name__ == '__main__':
