@@ -169,7 +169,7 @@ class Metric(object):
                         iou = ious[dind,gind]
                         m   = gind
                     # if match made store id of match for both dt and gt
-                    if m ==-1:
+                    if m == -1:
                         continue
                     dtIg[tind,dind] = gtIg[m]
                     dtm[tind,dind]  = gind + 1  # not equal 0

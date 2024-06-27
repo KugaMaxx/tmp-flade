@@ -35,8 +35,17 @@ public:
       bin_image.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
     }
 
+    // morphological process
+    cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
+
+    cv::Mat dilated_image;
+    cv::dilate(bin_image, dilated_image, kernel);
+
+    cv::Mat eroded_image;
+    cv::erode(dilated_image, eroded_image, kernel);
+
     // find possible regions
-    RegionSet region_set = findContoursRect(bin_image);
+    RegionSet region_set = findContoursRect(eroded_image);
 
     // selective search
     std::vector<std::vector<float_t>> results = selectiveBoundingBox(cnt_image, region_set);
