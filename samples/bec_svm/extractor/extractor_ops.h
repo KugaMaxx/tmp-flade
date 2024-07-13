@@ -73,10 +73,14 @@ public:
     const double contour_area = cv::contourArea(contour);
     const double arc_length = cv::arcLength(contour, true) + 1;
 
-    // corners
-    const double max_corners = 20;
-    std::vector<cv::Point2f> corners;
-    cv::goodFeaturesToTrack(image, corners, max_corners, 0.01, 10);
+    // // corners
+    // std::vector<cv::Point2f> corners;
+    // cv::goodFeaturesToTrack(image, corners, max_corners, 0.01, 10);
+
+    const double const_corners = 50;
+    std::vector<cv::KeyPoint> corners;
+    cv::Ptr<cv::FastFeatureDetector> detector = cv::FastFeatureDetector::create(50);
+    detector->detect(image, corners);
 
     // backward
     const std::vector<cv::Point> contour_1 = findMainContour(image_1);
@@ -99,7 +103,7 @@ public:
       (double) (4 * M_PI * contour_area / (arc_length * arc_length)),
       (double) std::fabs(area_1 - area_2) * 2 / (area_1 + area_2),
       (double) cv::norm(centroid_1 - centroid_2),
-      (double) (corners.size() / max_corners),
+      (double) (corners.size() / const_corners),
     };
 
     return results;

@@ -1,16 +1,63 @@
+import time
 import numpy as np
 from typing import Dict, List
 from collections import defaultdict
 
 import torch
 from torchvision.ops import box_iou
+from contextlib import ContextDecorator
+
+
+class Timer(ContextDecorator):
+    """
+    Derive from https://github.com/ultralytics/yolov5/blob/master/utils/general.py
+    """
+    def __init__(self, device: str = None):
+        self.total_num  = 0
+        self.total_time = 0
+        self.device = device
+        self.cuda = bool(device and str(device).startswith("cuda"))
+        if self.cuda: 
+            import torch
+
+    def __enter__(self):
+        """
+        Initializes timing at the start of a context block.
+        """
+        self.start = self._time()
+        return self
+
+    def __exit__(self, *exec):
+        """
+        Updating duration upon exiting a context block.
+        """
+        self.total_time += self._time() - self.start  # delta-time
+
+    def _time(self):
+        """Measures and returns the current time, synchronizing CUDA operations if `cuda` is True."""
+        if self.cuda: torch.cuda.synchronize(self.device)
+        return time.time()
+    
+    def count(self, num):
+        self.total_num += num
+    
+    def report(self):
+        stats = {
+            'num':  self.total_num,
+            'time': self.total_time,
+            'fps':  self.total_num / self.total_time if self.total_time != 0 else -1
+        }
+
+        brief = f"Speed: {stats['fps']:5.3f} fps, {1 / stats['fps'] * 1e3:5.3f} ms"
+
+        return stats, brief
 
 
 class Metric(object):
     def __init__(self, cats: List = None, tags: List = None):
-        # information of datasets
-        self.cat_ids = {cat['name']: cat['id'] for cat in cats}
-        self.aet_ids = {tag['name']: tag['id'] for tag in tags}
+        # information of datasets and re-id
+        self.cat_ids = {cat['name']: i for i, cat in enumerate(cats)}
+        self.aet_ids = {tag['name']: i for i, tag in enumerate(tags)}
 
         # intrinsic parameters
         self.max_dets = {

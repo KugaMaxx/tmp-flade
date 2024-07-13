@@ -6,7 +6,7 @@ class BinaryEventContour(generator_ops.Detector):
                  resolution, 
                  threshold: float = 0.88, 
                  candidate_num: int = 1, 
-                 min_area: int = 5) -> None:
+                 min_area: int = 25) -> None:
         super().__init__(resolution, 
                          threshold=threshold, 
                          candidate_num=candidate_num,
