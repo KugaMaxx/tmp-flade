@@ -1,4 +1,5 @@
 import random
+import platform
 import numpy as np
 from typing import List
 from PIL import Image, ImageDraw, ImageFont
@@ -17,8 +18,8 @@ def plot_projected_events(bkg_image, events):
     # project events
     evt_image = Image.new('RGBA', (width, height))
     evt_draw = ImageDraw.Draw(evt_image)
-    evt_draw.point(list(zip(x[pos_ind], y[pos_ind])), fill=(255, 0, 0, 128))
-    evt_draw.point(list(zip(x[neg_ind], y[neg_ind])), fill=(0, 0, 255, 128))
+    evt_draw.point(list(zip(x[pos_ind], y[pos_ind])), fill=(0, 0, 255, 128))
+    evt_draw.point(list(zip(x[neg_ind], y[neg_ind])), fill=(255, 0, 0, 128))
 
     # hybrid
     pil_image = Image.alpha_composite(bkg_image, evt_image)
@@ -69,23 +70,37 @@ def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: 
     # create PIL image
     pil_image = Image.fromarray(bkg_image).convert("RGBA")
     draw = ImageDraw.Draw(pil_image)
-    font = ImageFont.load_default()
+    try:
+        try:
+            # Linux
+            font = ImageFont.truetype("DejaVuSans.ttf", size=int(min(width, height) * 0.05))
+        except OSError:
+            # Windows
+            font = ImageFont.truetype("Arial.ttf", size=int(min(width, height) * 0.05))
+    except OSError:
+        # Load default, note no resize option
+        font = ImageFont.load_default()
 
     # drawing
     for k, (tl_x, tl_y, rb_x, rb_y) in enumerate(bboxes):
         # obtain element
         label = labels[k] if labels is not None else 0
         proba = scores[k] if scores is not None else None
+        if label not in categories.keys(): continue
         name  = categories[label]['name']
         color = categories[label]['color']
 
         # draw rectangle
-        draw.rectangle((tl_x, tl_y, rb_x, rb_y), width=2, outline=hex_to_rgb(color)+(200,))
+        draw.rectangle((tl_x, tl_y, rb_x, rb_y), 
+                       width = max(1, int(min(width, height) * 0.015)),
+                       outline = hex_to_rgb(color) + (200,))
 
         # draw text on the image
+        text_x = tl_x
+        text_y = tl_y - 10 if tl_y - 10 > 0 else 0
         text = f"{name}: {proba:.2f}" if proba is not None else f"{name}"
-        text_bbox = draw.textbbox((tl_x, tl_y), text, font=font)
+        text_bbox = draw.textbbox((text_x, text_y), text, font=font)
         draw.rectangle(text_bbox, fill=hex_to_rgb(color)+(200,))
-        draw.text((tl_x, tl_y), text, fill=(255, 255, 255), font=font)
+        draw.text((text_x, text_y), text, fill=(255, 255, 255), font=font)
 
     return np.array(pil_image)

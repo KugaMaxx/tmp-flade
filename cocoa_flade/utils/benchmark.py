@@ -55,7 +55,11 @@ class Timer(ContextDecorator):
 
 class Metric(object):
     def __init__(self, cats: List = None, tags: List = None):
-        # information of datasets and re-id
+        # information of datasets
+        self.cat_info = {cat['id']: cat for cat in cats}
+        self.aet_info = {tag['id']: tag for tag in tags}
+
+        # re-id
         self.cat_ids = {cat['name']: i for i, cat in enumerate(cats)}
         self.aet_ids = {tag['name']: i for i, tag in enumerate(tags)}
 
@@ -92,9 +96,13 @@ class Metric(object):
 
             # convert target
             for tgt_cls, tgt_box in zip(target['labels'], target['bboxes']):
+                # index check
+                if tgt_cls not in self.cat_info.keys(): continue
+
                 # parse elements
-                category_id = tgt_cls
                 xtl, ytl, w, h = tgt_box
+                category_name  = self.cat_info[tgt_cls]['name']
+                category_id    = self.cat_ids[category_name]
                 
                 # emplace back
                 self._gts[image_id, category_id].append({
@@ -108,10 +116,14 @@ class Metric(object):
 
             # convert output
             for out_cls, out_prob, out_box in zip(output['labels'], output['scores'], output['bboxes']):
+                # index check
+                if out_cls not in self.cat_info.keys(): continue
+
                 # parse elements
                 score = out_prob
-                category_id = out_cls
                 xtl, ytl, w, h = out_box
+                category_name  = self.cat_info[out_cls]['name']
+                category_id    = self.cat_ids[category_name]
 
                 # emplace back
                 self._dts[image_id, category_id].append({

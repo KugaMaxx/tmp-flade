@@ -93,8 +93,8 @@ public:
     const std::vector<cv::Point> contour_2 = findMainContour(image_2);
     const double area_2 = cv::contourArea(contour_2) + 1;
     cv::Moments M_2 = cv::moments(contour_2);
-    cv::Point centroid_2(M_1.m10 / (M_1.m00 + std::numeric_limits<double>::epsilon()), 
-                         M_1.m01 / (M_1.m00 + std::numeric_limits<double>::epsilon()));
+    cv::Point centroid_2(M_2.m10 / (M_2.m00 + std::numeric_limits<double>::epsilon()), 
+                         M_2.m01 / (M_2.m00 + std::numeric_limits<double>::epsilon()));
 
     std::vector<double> results{
       (double) (count) / (box_w * box_h),

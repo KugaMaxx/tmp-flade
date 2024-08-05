@@ -27,10 +27,13 @@ public:
         threshold_(threshold) {}
 
   std::vector<std::vector<float_t>> detect(const py::array_t<int64_t> &array) {
+    // downsampling
+    size_t step = array.request().shape[0] / 30000 + 1;
+
     // project
     cv::Mat cnt_image = cv::Mat::zeros(width_, height_, CV_32F);
     cv::Mat bin_image = cv::Mat::zeros(width_, height_, CV_8UC1);
-    for (size_t i = 0; i < array.request().shape[0]; i++) {
+    for (size_t i = 0; i < array.request().shape[0]; i = i + step) {
       cnt_image.at<uint8_t>(array.at(i, 1), array.at(i, 2)) += 1;
       bin_image.at<uint8_t>(array.at(i, 1), array.at(i, 2)) = 255;
     }
