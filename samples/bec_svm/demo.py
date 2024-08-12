@@ -20,7 +20,7 @@ data_path = '/home/szd/workspace/tmp-flade/data/FlaDE'
 # training
 print("Training...")
 X_train, Y_train = [], []
-data_loader = FlaDE(data_path, 'train', shuffle=True, num_samples=600)
+data_loader = FlaDE(data_path, 'train', shuffle=True, num_samples=600, denoised=True)
 for i, (sample, target) in enumerate(data_loader):
     # create output
     output = dict()
@@ -56,7 +56,7 @@ svm.fit(X_train, Y_train)
 
 # validation
 print("Validation...")
-data_loader = FlaDE(data_path, 'val', shuffle=True)
+data_loader = FlaDE(data_path, 'val', shuffle=True, denoised=True)
 timer  = Timer()
 metric = Metric(cats=data_loader.dataset.get_cats(), 
                 tags=data_loader.dataset.get_tags())
@@ -76,35 +76,13 @@ for i, (sample, target) in enumerate(data_loader):
         ext = FeatExtractor(target['resolution'])
         output['feats'] = ext.process(sample, output['bboxes'])
         
-        # whether roi is empty
-        if len(output['bboxes']) == 0:
-            output['labels'] = []
-            output['scores'] = []
-        else:
-            output['labels'] = [c for c in svm.predict(output['feats'])]
-            output['scores'] = [p.max() for p in svm.predict_proba(output['feats'])]
-
-    # if 0 in output['labels'] and 0 in target['labels']:
-    #     ind = np.array(output['labels']) == 0
-    #     iou = box_iou(_box_xywh_to_xyxy(torch.tensor(output['bboxes'])),
-    #                   _box_xywh_to_xyxy(torch.tensor(target['bboxes'])))
-        
-    #     if iou[ind, 0].min() < 0.5:
-        # image = plot_projected_events(sample['frames'], sample['events'])
-        # image = plot_rescaled_image(image, factor=5)
-        # image = plot_detection_result(image, bboxes=output['bboxes'], labels=output['labels'], scores=output['scores'])
-        # image = plot_detection_result(image, bboxes=target['bboxes'], labels=target['labels'], 
-        #                               categories=data_loader.dataset.get_cats())
-        # cv2.putText(image, f"{target['name']}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-        # cv2.imwrite(f'./detects/detect_{i}.png', image)
-        # print(f'./detects/detect_{i}.png', 
-        #         target['name'], 
-        #         _box_xywh_to_xyxy(torch.tensor([
-        #             output['bboxes'][0][0] * 346,
-        #             output['bboxes'][0][1] * 260,
-        #             output['bboxes'][0][2] * 346,
-        #             output['bboxes'][0][3] * 260
-        #         ])))
+    # whether roi is empty
+    if len(output['bboxes']) == 0:
+        output['labels'] = []
+        output['scores'] = []
+    else:
+        output['labels'] = [c for c in svm.predict(output['feats'])]
+        output['scores'] = [p.max() for p in svm.predict_proba(output['feats'])]
 
     metric.update([output], [target])
 

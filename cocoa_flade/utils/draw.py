@@ -28,11 +28,14 @@ def plot_projected_events(bkg_image, events):
 
 
 def plot_rescaled_image(bkg_image, factor=2):
+    # convert to pil image
+    bkg_image = Image.fromarray(bkg_image).convert('RGBA')
+
     # define rescaled function
     from scipy.ndimage import zoom
     rescale = lambda x: zoom(x, zoom=(factor, factor, 1), order=3)
 
-    return rescale(bkg_image)
+    return np.array(rescale(bkg_image))
 
 
 def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: List = None,
@@ -65,7 +68,7 @@ def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: 
     ]
 
     # color convert function
-    hex_to_rgb = lambda hex: tuple(int(hex.lstrip('#')[i:i+2], 16) for i in (0, 2, 4))
+    hex_to_rgb = lambda hex: tuple(int(hex.lstrip('#')[i:i+2], 16) for i in (4, 2, 0))
 
     # create PIL image
     pil_image = Image.fromarray(bkg_image).convert("RGBA")
@@ -73,10 +76,10 @@ def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: 
     try:
         try:
             # Linux
-            font = ImageFont.truetype("DejaVuSans.ttf", size=int(min(width, height) * 0.05))
+            font = ImageFont.truetype("DejaVuSans.ttf", size=int(min(width, height) * 0.08))
         except OSError:
             # Windows
-            font = ImageFont.truetype("Arial.ttf", size=int(min(width, height) * 0.05))
+            font = ImageFont.truetype("Arial.ttf", size=int(min(width, height) * 0.08))
     except OSError:
         # Load default, note no resize option
         font = ImageFont.load_default()
@@ -96,10 +99,16 @@ def plot_detection_result(bkg_image, bboxes: List, labels: List = None, scores: 
                        outline = hex_to_rgb(color) + (200,))
 
         # draw text on the image
-        text_x = tl_x
-        text_y = tl_y - 10 if tl_y - 10 > 0 else 0
         text = f"{name}: {proba:.2f}" if proba is not None else f"{name}"
+        (text_width, text_height), (_, _) = font.font.getsize(text)
+        text_x = tl_x if tl_x + text_width < width else width - text_width
+        text_y = tl_y - text_height if tl_y - text_height > 0 else 0
         text_bbox = draw.textbbox((text_x, text_y), text, font=font)
+
+        margin = int(min(width, height) * 0.01)
+        text_bbox = (text_bbox[0], text_bbox[1] - margin,
+                     text_bbox[2], text_bbox[3] + margin)
+
         draw.rectangle(text_bbox, fill=hex_to_rgb(color)+(200,))
         draw.text((text_x, text_y), text, fill=(255, 255, 255), font=font)
 
