@@ -1,4 +1,5 @@
 import os
+import gdown
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -12,27 +13,20 @@ class FlaDE(object):
             self.path.mkdir(parents=True)
     
         # download
-        if not (self.path / 'assets').exists():
-            print("Downloading datasets...")
-            os.system(
-                f'wget -O {self.path / self.name}.zip '
-                '"https://recstore.ustc.edu.cn/file/20240619_8fa78247195237242027ab72db9a53a7'
-                '?Signature=hH0+uZcqFffiVPHUITCb8DV+Xxc=&Expires=1718930564&AccessKeyId=MAKIG23JM2UB98N0KTQH'
-                '&response-content-type=application%2Foctet-stream'
-                '&response-content-disposition=attachment%3Bfilename%3D%22FlaDE.zip%22'
-                '&storage=moss&filename=FlaDE.zip&download=download"'
-            )
+        if not (self.path / self.name).exists():
+            gdown.download(url='https://drive.google.com/uc?id=1rLWpY98RdBYUQ7XnbdBPqWrrBf-GTeQ5', 
+                           output=f'{self.path / self.name}.zip')
             print("Unziping...")
             os.system(f'unzip -q {self.path / self.name}.zip -d {self.path}')
             os.system(f'rm {self.path / self.name}.zip')
         
         # process
-        if not (self.path / 'samples').exists():
+        if not (self.path / self.name / 'samples').exists():
             print("Processing...")
-            os.system(f'python3 {self.path / "scripts" / "build.py"}')
+            os.system(f'python3 {self.path / self.name / "scripts" / "build.py"}')
 
         # parse annotations
-        self.root = ET.parse(self.path / 'annotations.xml').getroot()
+        self.root = ET.parse(f'{self.path / self.name / "annotations.xml"}').getroot()
         self.cats = list()
         self.tags = list()
 
